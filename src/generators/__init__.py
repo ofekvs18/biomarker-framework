@@ -6,6 +6,8 @@ from .literature_threshold import (
     LiteratureThresholdGenerator,
     SingleFeatureLiteratureGenerator,
 )
+from .shap_datadriven_threshold import SHAPDataDrivenThresholdGenerator
+from .shap_literature_threshold import SHAPLiteratureThresholdGenerator
 
 __all__ = [
     "BaseBiomarkerGenerator",
@@ -14,4 +16,6 @@ __all__ = [
     "SingleFeatureLiteratureGenerator",
     "DataDrivenThresholdGenerator",
     "YoudensIndexGenerator",
+    "SHAPLiteratureThresholdGenerator",
+    "SHAPDataDrivenThresholdGenerator",
 ]

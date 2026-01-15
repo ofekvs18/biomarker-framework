@@ -1,0 +1,90 @@
+# Disease Configuration for Biomarker Discovery Framework
+# Maps disease names to ICD codes and relevant CBC biomarkers
+
+diseases:
+  # Existing diseases from original config
+  rheumatoid_arthritis:
+    name: "Rheumatoid Arthritis"
+    icd9_codes: ["714.0", "714.1", "714.2", "714.3", "714.4", "714.8", "714.9"]
+    icd10_codes: ["M05", "M06"]
+    description: "Chronic inflammatory disorder affecting joints"
+    relevant_biomarkers:
+      - wbc
+      - platelets
+      - hemoglobin
+
+  diabetes_type1:
+    name: "Diabetes Mellitus Type 1"
+    icd9_codes: ["250.01", "250.03", "250.11", "250.13", "250.31", "250.33"]
+    icd10_codes: ["E10"]
+    description: "Autoimmune diabetes"
+    relevant_biomarkers:
+      - wbc
+      - platelets
+
+  diabetes_type2:
+    name: "Diabetes Mellitus Type 2"
+    icd9_codes: ["250.00", "250.02", "250.10", "250.12", "250.30", "250.32"]
+    icd10_codes: ["E11"]
+    description: "Metabolic diabetes"
+    relevant_biomarkers:
+      - wbc
+      - platelets
+      - hemoglobin
+
+  crohns_disease:
+    name: "Crohn's Disease"
+    icd9_codes: ["555.0", "555.1", "555.2", "555.9"]
+    icd10_codes: ["K50"]
+    description: "Inflammatory bowel disease"
+    relevant_biomarkers:
+      - wbc
+      - platelets
+      - hemoglobin
+      - hematocrit
+
+  psoriasis:
+    name: "Psoriasis"
+    icd9_codes: ["696.1"]
+    icd10_codes: ["L40"]
+    description: "Immune-mediated inflammatory skin condition"
+    relevant_biomarkers:
+      - wbc
+      - platelets
+
+  # Additional hematologic diseases
+  anemia:
+    name: "Anemia"
+    icd9_codes: ["280", "281", "282", "283", "284", "285"]
+    icd10_codes: ["D50", "D51", "D52", "D53", "D55", "D56", "D58", "D59", "D63", "D64"]
+    description: "Various types of anemia"
+    relevant_biomarkers:
+      - hemoglobin
+      - hematocrit
+      - rbc
+      - mcv
+      - mch
+      - mchc
+      - rdw
+
+  sepsis:
+    name: "Sepsis"
+    icd9_codes: ["038", "995.91", "995.92"]
+    icd10_codes: ["A40", "A41", "R65.2"]
+    description: "Sepsis and septic shock"
+    relevant_biomarkers:
+      - wbc
+      - platelets
+      - neutrophils
+
+  thrombocytopenia:
+    name: "Thrombocytopenia"
+    icd9_codes: ["287.3", "287.4", "287.5"]
+    icd10_codes: ["D69.3", "D69.4", "D69.5", "D69.6"]
+    description: "Low platelet conditions"
+    relevant_biomarkers:
+      - platelets
+      - mpv
+
+# Default disease for initial experiments
+default_disease: anemia

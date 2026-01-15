@@ -10,7 +10,7 @@ import pandas as pd
 import seaborn as sns
 
 from src.evaluation.metrics import BiomarkerMetrics
-from src.generators.base import BaseBiomarkerGenerator
+from src.generators.base import BaseBiomarkerGenerator, BiomarkerGenerator
 
 
 class Evaluator:
@@ -608,3 +608,260 @@ class BiomarkerEvaluator:
                     pass
 
             plt.show()
+
+    def evaluate_ml_generator(
+        self,
+        generator: BiomarkerGenerator,
+        X_train: Union[pd.DataFrame, np.ndarray],
+        y_train: Union[pd.Series, np.ndarray],
+        X_test: Union[pd.DataFrame, np.ndarray],
+        y_test: Union[pd.Series, np.ndarray],
+        feature_names: List[str],
+        generator_name: str,
+        disease: Optional[str] = None,
+        additional_params: Optional[Dict] = None,
+        save_shap_plots: bool = True,
+    ) -> Dict[str, Any]:
+        """Evaluate a ML-based biomarker generator (with generate/apply interface).
+
+        This method is designed for the modern BiomarkerGenerator interface used by
+        SHAP-based and other ML-driven generators. It:
+        1. Generates biomarker from training data
+        2. Applies biomarker to test data
+        3. Calculates all configured metrics
+        4. Creates visualizations (including SHAP plots if available)
+        5. Logs everything to MLflow
+        6. Returns comprehensive results dictionary
+
+        Args:
+            generator: BiomarkerGenerator instance to evaluate.
+            X_train: Training features (n_samples, n_features).
+            y_train: Training labels.
+            X_test: Test features (n_samples, n_features).
+            y_test: Test labels.
+            feature_names: List of feature names.
+            generator_name: Name of the generator method for logging.
+            disease: Disease being predicted (for logging).
+            additional_params: Additional parameters to log to MLflow.
+            save_shap_plots: Whether to save SHAP plots (if generator supports it).
+
+        Returns:
+            Dictionary containing:
+                - 'generator_name': str
+                - 'metrics': Dict of calculated metrics
+                - 'biomarker': Dict with biomarker formula and metadata
+                - 'predictions': Test set predictions
+                - 'plots': Dictionary of matplotlib figure objects
+        """
+        # Convert to numpy arrays if needed
+        if isinstance(X_train, pd.DataFrame):
+            X_train = X_train.values
+        if isinstance(X_test, pd.DataFrame):
+            X_test = X_test.values
+        if isinstance(y_train, pd.Series):
+            y_train = y_train.values
+        if isinstance(y_test, pd.Series):
+            y_test = y_test.values
+
+        results = {
+            "generator_name": generator_name,
+            "metrics": {},
+            "plots": {},
+            "biomarker": {},
+        }
+
+        # Start MLflow run
+        with mlflow.start_run(run_name=f"{generator_name}_{disease or 'unknown'}"):
+            try:
+                # Log parameters
+                mlflow.log_param("generator_method", generator_name)
+                mlflow.log_param("n_train_samples", len(X_train))
+                mlflow.log_param("n_test_samples", len(X_test))
+                mlflow.log_param("n_features", X_train.shape[1])
+                mlflow.log_param("feature_names", feature_names)
+
+                if disease:
+                    mlflow.log_param("disease", disease)
+
+                # Log class distribution
+                mlflow.log_param("train_pos_rate", float(np.mean(y_train)))
+                mlflow.log_param("test_pos_rate", float(np.mean(y_test)))
+
+                # Log additional parameters if provided
+                if additional_params:
+                    for key, value in additional_params.items():
+                        mlflow.log_param(key, value)
+
+                # Step 1: Generate biomarker from training data
+                print(f"Generating biomarker using {generator_name}...")
+                biomarker_info = generator.generate(X_train, y_train, feature_names)
+                results["biomarker"] = biomarker_info
+
+                # Log biomarker information
+                mlflow.log_param("biomarker_formula", biomarker_info["formula"])
+                mlflow.log_param("biomarker_threshold", biomarker_info["threshold"])
+                mlflow.log_param("features_used", biomarker_info["features_used"])
+
+                # Log metadata
+                if "metadata" in biomarker_info:
+                    for key, value in biomarker_info["metadata"].items():
+                        if isinstance(value, (int, float, str, bool)):
+                            mlflow.log_param(f"metadata_{key}", value)
+                        elif isinstance(value, dict) and all(
+                            isinstance(v, (int, float)) for v in value.values()
+                        ):
+                            # Log dict of numeric values as individual params
+                            for sub_key, sub_value in value.items():
+                                mlflow.log_param(f"metadata_{key}_{sub_key}", sub_value)
+
+                print(f"  Formula: {biomarker_info['formula']}")
+                print(f"  Features used: {biomarker_info['features_used']}")
+
+                # Step 2: Apply biomarker to test data
+                print("Applying biomarker to test data...")
+                y_pred = generator.apply(X_test)
+                results["predictions"] = y_pred
+
+                # For ROC/AUC, we need probabilities. Use predictions as binary scores.
+                # If this is a binary threshold-based method, we can't compute a proper AUC,
+                # but we can still compute other metrics.
+                y_pred_proba = y_pred.astype(float)
+
+                # Step 3: Calculate all metrics
+                print("Calculating metrics...")
+
+                # Precision and Recall
+                try:
+                    pr_metrics = self.metrics.calculate_precision_recall(y_test, y_pred)
+                    results["metrics"]["precision"] = pr_metrics["precision"]
+                    results["metrics"]["recall"] = pr_metrics["recall"]
+
+                    # Calculate F1 score
+                    if pr_metrics["precision"] + pr_metrics["recall"] > 0:
+                        f1 = (
+                            2
+                            * pr_metrics["precision"]
+                            * pr_metrics["recall"]
+                            / (pr_metrics["precision"] + pr_metrics["recall"])
+                        )
+                    else:
+                        f1 = 0.0
+                    results["metrics"]["f1"] = f1
+
+                    mlflow.log_metric("precision", pr_metrics["precision"])
+                    mlflow.log_metric("recall", pr_metrics["recall"])
+                    mlflow.log_metric("f1", f1)
+
+                    print(f"  Precision: {pr_metrics['precision']:.4f}")
+                    print(f"  Recall: {pr_metrics['recall']:.4f}")
+                    print(f"  F1: {f1:.4f}")
+                except Exception as e:
+                    print(f"  Warning: Could not calculate precision/recall: {e}")
+
+                # Confusion Matrix
+                try:
+                    cm = self.metrics.calculate_confusion_matrix(y_test, y_pred)
+                    results["metrics"]["confusion_matrix"] = cm
+
+                    # Log individual confusion matrix values
+                    if cm.shape == (2, 2):
+                        mlflow.log_metric("tn", int(cm[0, 0]))
+                        mlflow.log_metric("fp", int(cm[0, 1]))
+                        mlflow.log_metric("fn", int(cm[1, 0]))
+                        mlflow.log_metric("tp", int(cm[1, 1]))
+
+                        # Calculate specificity, sensitivity, and accuracy
+                        specificity = cm[0, 0] / (cm[0, 0] + cm[0, 1]) if (cm[0, 0] + cm[0, 1]) > 0 else 0
+                        sensitivity = cm[1, 1] / (cm[1, 1] + cm[1, 0]) if (cm[1, 1] + cm[1, 0]) > 0 else 0
+                        accuracy = (cm[0, 0] + cm[1, 1]) / cm.sum() if cm.sum() > 0 else 0
+
+                        results["metrics"]["specificity"] = specificity
+                        results["metrics"]["sensitivity"] = sensitivity
+                        results["metrics"]["accuracy"] = accuracy
+
+                        mlflow.log_metric("specificity", specificity)
+                        mlflow.log_metric("sensitivity", sensitivity)
+                        mlflow.log_metric("accuracy", accuracy)
+
+                        print(f"  Specificity: {specificity:.4f}")
+                        print(f"  Sensitivity: {sensitivity:.4f}")
+                        print(f"  Accuracy: {accuracy:.4f}")
+                except Exception as e:
+                    print(f"  Warning: Could not calculate confusion matrix: {e}")
+
+                # Step 4: Create visualizations
+                if self.metrics_config.get("create_plots", True):
+                    print("Creating visualizations...")
+
+                    # Confusion Matrix
+                    try:
+                        fig_cm, ax_cm = plt.subplots(figsize=(8, 6))
+                        self.metrics.plot_confusion_matrix_heatmap(
+                            y_test,
+                            y_pred,
+                            title=f"Confusion Matrix - {generator_name}",
+                            ax=ax_cm,
+                        )
+                        results["plots"]["confusion_matrix"] = fig_cm
+
+                        # Save and log to MLflow
+                        cm_path = f"confusion_matrix_{generator_name}.png"
+                        fig_cm.savefig(cm_path, dpi=150, bbox_inches="tight")
+                        mlflow.log_artifact(cm_path)
+                        Path(cm_path).unlink()  # Clean up
+                        plt.close(fig_cm)
+                    except Exception as e:
+                        print(f"  Warning: Could not create confusion matrix: {e}")
+
+                    # SHAP plots if available
+                    if save_shap_plots and hasattr(generator, "get_shap_plots"):
+                        try:
+                            print("Creating SHAP visualizations...")
+                            shap_plots = generator.get_shap_plots(max_display=15)
+
+                            # Save summary plot
+                            if "summary" in shap_plots:
+                                summary_path = f"shap_summary_{generator_name}.png"
+                                shap_plots["summary"].savefig(
+                                    summary_path, dpi=150, bbox_inches="tight"
+                                )
+                                mlflow.log_artifact(summary_path)
+                                Path(summary_path).unlink()
+                                plt.close(shap_plots["summary"])
+
+                            # Save bar plot
+                            if "bar" in shap_plots:
+                                bar_path = f"shap_bar_{generator_name}.png"
+                                shap_plots["bar"].savefig(
+                                    bar_path, dpi=150, bbox_inches="tight"
+                                )
+                                mlflow.log_artifact(bar_path)
+                                Path(bar_path).unlink()
+                                plt.close(shap_plots["bar"])
+
+                            print("  SHAP plots saved and logged to MLflow")
+                        except Exception as e:
+                            print(f"  Warning: Could not create SHAP plots: {e}")
+
+                # Log biomarker description as text artifact
+                biomarker_text = f"Biomarker Description for {generator_name}\n"
+                biomarker_text += "=" * 50 + "\n\n"
+                biomarker_text += generator.get_description() + "\n"
+
+                biomarker_file = f"biomarker_{generator_name}.txt"
+                with open(biomarker_file, "w") as f:
+                    f.write(biomarker_text)
+                mlflow.log_artifact(biomarker_file)
+                Path(biomarker_file).unlink()  # Clean up
+
+                print(f"\nEvaluation complete for {generator_name}!")
+                exp_id = mlflow.active_run().info.experiment_id
+                exp_name = mlflow.get_experiment(exp_id).name
+                print(f"Results logged to MLflow experiment: {exp_name}")
+
+            except Exception as e:
+                print(f"Error during evaluation: {e}")
+                mlflow.log_param("error", str(e))
+                raise
+
+        return results

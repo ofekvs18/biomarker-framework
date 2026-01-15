@@ -262,3 +262,45 @@ literature_thresholds:
     lymphocytes:
       low: 20
       high: 40
+
+# SHAP-based model configurations
+# These settings control the models used for SHAP feature selection
+shap_config:
+  # Default model configuration for SHAP-based generators
+  default_model:
+    model_type: "RandomForest"  # Options: RandomForest, XGBoost, LogisticRegression
+    n_estimators: 100
+    max_depth: 10
+    min_samples_split: 5
+    random_state: 42
+
+  # Alternative configurations for different use cases
+  models:
+    random_forest:
+      model_type: "RandomForest"
+      n_estimators: 100
+      max_depth: 10
+      min_samples_split: 5
+      random_state: 42
+
+    xgboost:
+      model_type: "XGBoost"
+      n_estimators: 100
+      max_depth: 6
+      learning_rate: 0.1
+      random_state: 42
+
+    logistic_regression:
+      model_type: "LogisticRegression"
+      max_iter: 1000
+      random_state: 42
+
+  # SHAP explainer preferences
+  explainer:
+    type: "auto"  # Options: auto, tree, linear, kernel
+    background_samples: 100  # For KernelExplainer
+
+  # Cross-validation settings for threshold optimization
+  cross_validation:
+    use_cv: true
+    cv_folds: 5

@@ -43,9 +43,10 @@ try:
     import pyarrow.parquet as pq
     from google.auth.exceptions import DefaultCredentialsError
     import google.auth
+    from tqdm import tqdm
 except ImportError as e:
     print(f"Missing required package: {e}")
-    print("\nInstall with: pip install google-cloud-bigquery pandas pyarrow")
+    print("\nInstall with: pip install google-cloud-bigquery pandas pyarrow tqdm")
     sys.exit(1)
 
 
@@ -444,33 +445,78 @@ class MIMICDataDownloader:
         logger.warning("This is a LARGE table and may take 10-30 minutes!")
 
         try:
-            # Execute query
-            query_job = self.client.query(query)
+            # First, get total row count for progress bar
+            count_query = f"""
+            SELECT COUNT(*) as cnt
+            FROM `physionet-data.mimiciv_3_1_hosp.labevents`
+            WHERE {where_clause}
+            {lab_filter}
+            AND valuenum IS NOT NULL
+            """
+            count_job = self.client.query(count_query)
+            total_rows = list(count_job.result())[0].cnt
+            logger.info(f"  Total rows to download: {total_rows:,}")
 
-            # Download in chunks to avoid memory issues
+            # Calculate number of batches
+            num_batches = (total_rows + chunk_size - 1) // chunk_size
+            logger.info(f"  Downloading in {num_batches} batches of {chunk_size:,} rows each...")
+
+            # Download in batches using OFFSET/LIMIT
             df_chunks = []
-            total_rows = 0
 
-            for chunk in query_job.result(page_size=chunk_size):
-                chunk_df = chunk.to_dataframe()
-                df_chunks.append(chunk_df)
-                total_rows += len(chunk_df)
-                logger.info(f"  Downloaded {total_rows:,} rows so far...")
+            with tqdm(total=total_rows, unit='rows', desc="Downloading") as pbar:
+                for batch_num in range(num_batches):
+                    offset = batch_num * chunk_size
 
-            # Combine chunks
+                    batch_query = f"""
+                    SELECT
+                        labevent_id,
+                        subject_id,
+                        hadm_id,
+                        specimen_id,
+                        itemid,
+                        charttime,
+                        storetime,
+                        value,
+                        valuenum,
+                        valueuom,
+                        ref_range_lower,
+                        ref_range_upper,
+                        flag,
+                        priority,
+                        comments
+                    FROM `physionet-data.mimiciv_3_1_hosp.labevents`
+                    WHERE {where_clause}
+                    {lab_filter}
+                    AND valuenum IS NOT NULL
+                    ORDER BY subject_id, charttime
+                    LIMIT {chunk_size} OFFSET {offset}
+                    """
+
+                    batch_job = self.client.query(batch_query)
+                    batch_df = batch_job.result().to_dataframe()
+
+                    if len(batch_df) == 0:
+                        break
+
+                    df_chunks.append(batch_df)
+                    pbar.update(len(batch_df))
+
+            # Combine all chunks
+            logger.info("  Combining batches...")
             df = pd.concat(df_chunks, ignore_index=True)
 
             # Store metadata
             self.metadata['tables']['labevents'] = {
                 'rows': len(df),
                 'columns': list(df.columns),
-                'bytes_processed': query_job.total_bytes_processed,
+                'bytes_processed': total_rows * 200,  # Estimate
                 'description': desc
             }
 
-            logger.info(f"  ✓ Downloaded {len(df):,} total rows, "
-                       f"{query_job.total_bytes_processed / 1e9:.2f} GB processed")
+            logger.info(f"  Downloaded {len(df):,} total rows")
 
+            logger.info("  Saving to parquet file...")
             self._save_parquet(df, 'labevents.parquet')
             return df
 

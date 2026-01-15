@@ -10,6 +10,8 @@ pyyaml>=6.0
 # BigQuery (for data download)
 google-cloud-bigquery>=3.0.0
 google-auth>=2.0.0
+db-dtypes>=1.0.0
+tqdm>=4.65.0
 
 # Visualization
 matplotlib>=3.7.0

@@ -87,6 +87,18 @@ def get_missing_files(status: dict) -> list:
     return [f for f, exists in status.items() if not exists]
 
 
+# Map filenames to download methods
+FILE_TO_TABLE = {
+    "patients.parquet": "patients",
+    "admissions.parquet": "admissions",
+    "icustays.parquet": "icustays",
+    "diagnoses_icd.parquet": "diagnoses_icd",
+    "d_icd_diagnoses.parquet": "d_icd_diagnoses",
+    "labevents.parquet": "labevents",
+    "d_labitems.parquet": "d_labitems",
+}
+
+
 def download_data(output_dir: Path, table: str = "all", **kwargs):
     """
     Download MIMIC-IV data from BigQuery.
@@ -123,19 +135,79 @@ def download_data(output_dir: Path, table: str = "all", **kwargs):
             downloader.download_admissions(**kwargs)
         elif table == "icustays":
             downloader.download_icustays()
-        elif table == "diagnoses":
+        elif table == "diagnoses" or table == "diagnoses_icd":
             downloader.download_diagnoses_icd(**kwargs)
+        elif table == "d_icd_diagnoses":
             downloader.download_d_icd_diagnoses()
         elif table == "labevents":
-            downloader.download_d_labitems()
             downloader.download_labevents(**kwargs)
         elif table == "d_labitems":
             downloader.download_d_labitems()
-        elif table == "d_icd_diagnoses":
-            downloader.download_d_icd_diagnoses()
         else:
             print(f"Unknown table: {table}")
             return False
+
+        print("\nDownload complete!")
+        return True
+
+    except Exception as e:
+        print(f"\nDownload failed: {e}")
+        print("\nTroubleshooting:")
+        print("  1. Run: gcloud auth application-default login")
+        print("  2. Ensure you have BigQuery access to physionet-data.mimiciv_3_1_hosp")
+        print("  3. Check your internet connection")
+        return False
+
+
+def download_missing_only(output_dir: Path, missing_files: list, **kwargs):
+    """
+    Download only the missing files.
+
+    Args:
+        output_dir: Directory to save parquet files
+        missing_files: List of missing filenames
+        **kwargs: Additional arguments passed to downloader
+    """
+    # Import the download module
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+    try:
+        from download_mimic_from_bigquery import MIMICDataDownloader
+    except ImportError:
+        print("Error: download_mimic_from_bigquery.py not found in scripts/")
+        print("Make sure the download script is in the scripts directory.")
+        return False
+
+    try:
+        # Ensure output directory exists
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"\nDownloading missing data to: {output_dir}")
+        print(f"Files to download: {', '.join(missing_files)}\n")
+
+        downloader = MIMICDataDownloader(str(output_dir))
+
+        for filename in missing_files:
+            table = FILE_TO_TABLE.get(filename)
+            if not table:
+                print(f"Warning: Unknown file {filename}, skipping...")
+                continue
+
+            print(f"\n--- Downloading {filename} ---")
+            if table == "patients":
+                downloader.download_patients()
+            elif table == "admissions":
+                downloader.download_admissions(**kwargs)
+            elif table == "icustays":
+                downloader.download_icustays()
+            elif table == "diagnoses_icd":
+                downloader.download_diagnoses_icd(**kwargs)
+            elif table == "d_icd_diagnoses":
+                downloader.download_d_icd_diagnoses()
+            elif table == "labevents":
+                downloader.download_labevents(**kwargs)
+            elif table == "d_labitems":
+                downloader.download_d_labitems()
 
         print("\nDownload complete!")
         return True
@@ -158,8 +230,11 @@ Examples:
   # Check data status
   python scripts/setup_data.py --check-only
 
-  # Download all missing data
+  # Download only missing files (default behavior)
   python scripts/setup_data.py
+
+  # Download all tables (even if some exist)
+  python scripts/setup_data.py --all
 
   # Download specific table only
   python scripts/setup_data.py --table labevents
@@ -174,7 +249,13 @@ Note: Requires BigQuery access to physionet-data.mimiciv_3_1_hosp
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Force re-download even if data exists"
+        help="Force re-download all files even if they exist"
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        dest="download_all",
+        help="Download all tables (not just missing ones)"
     )
     parser.add_argument(
         "--check-only",
@@ -184,10 +265,10 @@ Note: Requires BigQuery access to physionet-data.mimiciv_3_1_hosp
     parser.add_argument(
         "--table",
         type=str,
-        choices=["all", "patients", "admissions", "icustays", "diagnoses",
+        choices=["patients", "admissions", "icustays", "diagnoses",
                  "labevents", "d_labitems", "d_icd_diagnoses"],
-        default="all",
-        help="Download specific table only (default: all)"
+        default=None,
+        help="Download specific table only"
     )
     parser.add_argument(
         "--start-date",
@@ -221,44 +302,67 @@ Note: Requires BigQuery access to physionet-data.mimiciv_3_1_hosp
     if args.check_only:
         sys.exit(0 if all_exist else 1)
 
-    # Download if needed
-    if not all_exist or args.force:
-        if args.force and all_exist:
-            print("\n--force flag set, re-downloading data...")
+    # Get missing files
+    missing = get_missing_files(status)
 
-        missing = get_missing_files(status)
-        if missing and not args.force:
-            print(f"\nMissing files: {', '.join(missing)}")
-
-        # Confirm download
-        if args.yes:
-            do_download = True
-        else:
-            response = input("\nDo you want to download the data from BigQuery? (yes/no): ").strip().lower()
-            do_download = response in ['yes', 'y']
-
-        if do_download:
-            # Build kwargs for downloader
-            kwargs = {}
-            if args.start_date:
-                kwargs['start_date'] = args.start_date
-            if args.end_date:
-                kwargs['end_date'] = args.end_date
-
-            success = download_data(DATA_DIR, table=args.table, **kwargs)
-            if not success:
-                sys.exit(1)
-
-            # Re-check status after download
-            print("\n" + "-" * 60)
-            status = check_data_exists(DATA_DIR)
-            print_status(status, DATA_DIR)
-        else:
-            print("\nDownload skipped.")
-            if not all_exist:
-                print("Warning: Some data files are missing. The framework may not work correctly.")
+    # Determine what to download
+    if args.force:
+        # Force: re-download everything
+        download_mode = "all"
+        print("\n--force flag set, will re-download all data...")
+    elif args.table:
+        # Specific table requested
+        download_mode = "table"
+        print(f"\nWill download specific table: {args.table}")
+    elif args.download_all:
+        # --all flag: download all tables
+        download_mode = "all"
+        print("\n--all flag set, will download all tables...")
+    elif missing:
+        # Default: only download missing files
+        download_mode = "missing"
+        print(f"\nWill download only missing files: {', '.join(missing)}")
     else:
+        # Nothing to do
         print("\nAll data files already present. Use --force to re-download.")
+        print("\n" + "=" * 60)
+        print("Setup complete!")
+        print("=" * 60)
+        return
+
+    # Confirm download
+    if args.yes:
+        do_download = True
+    else:
+        response = input("\nDo you want to download the data from BigQuery? (yes/no): ").strip().lower()
+        do_download = response in ['yes', 'y']
+
+    if do_download:
+        # Build kwargs for downloader
+        kwargs = {}
+        if args.start_date:
+            kwargs['start_date'] = args.start_date
+        if args.end_date:
+            kwargs['end_date'] = args.end_date
+
+        if download_mode == "missing":
+            success = download_missing_only(DATA_DIR, missing, **kwargs)
+        elif download_mode == "table":
+            success = download_data(DATA_DIR, table=args.table, **kwargs)
+        else:  # "all"
+            success = download_data(DATA_DIR, table="all", **kwargs)
+
+        if not success:
+            sys.exit(1)
+
+        # Re-check status after download
+        print("\n" + "-" * 60)
+        status = check_data_exists(DATA_DIR)
+        print_status(status, DATA_DIR)
+    else:
+        print("\nDownload skipped.")
+        if missing:
+            print("Warning: Some data files are missing. The framework may not work correctly.")
 
     print("\n" + "=" * 60)
     print("Setup complete!")

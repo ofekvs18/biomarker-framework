@@ -5,7 +5,7 @@
 set -e  # Exit on error
 
 BUCKET="gs://biomarker-temp-data"
-LOCAL_DIR="./data/raw"
+LOCAL_DIR="./mimic_data"
 
 echo "Downloading MIMIC-IV data from $BUCKET to $LOCAL_DIR"
 echo "========================================================================"

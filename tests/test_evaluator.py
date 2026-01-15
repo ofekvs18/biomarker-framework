@@ -156,9 +156,9 @@ def evaluator():
     Returns:
         BiomarkerEvaluator instance.
     """
-    # Use a temporary directory for MLflow tracking
+    # Use a temporary directory for MLflow tracking with SQLite
     with tempfile.TemporaryDirectory() as tmpdir:
-        mlflow_uri = f"file://{tmpdir}/mlruns"
+        mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
         evaluator = BiomarkerEvaluator(
             mlflow_tracking_uri=mlflow_uri,
             experiment_name="test_experiment",
@@ -195,7 +195,7 @@ class TestBiomarkerEvaluatorInit:
     def test_init_with_mlflow_uri(self):
         """Test initialization with MLflow tracking URI."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
 
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
@@ -213,7 +213,7 @@ class TestEvaluateGenerator:
         X_train, y_train, X_test, y_test = sample_data
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="test_exp",
@@ -259,7 +259,7 @@ class TestEvaluateGenerator:
         y_test_np = y_test.values
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="test_exp",
@@ -291,7 +291,7 @@ class TestEvaluateGenerator:
         }
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="test_exp",
@@ -316,7 +316,7 @@ class TestEvaluateGenerator:
         X_train, y_train, X_test, y_test = sample_data
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="test_exp",
@@ -342,7 +342,7 @@ class TestEvaluateGenerator:
         X_train, y_train, X_test, y_test = sample_data
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="test_exp",
@@ -366,7 +366,7 @@ class TestEvaluateGenerator:
         X_train, y_train, X_test, y_test = sample_data
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="test_exp",
@@ -399,7 +399,7 @@ class TestCompareGenerators:
         gen2 = MockBiomarkerGenerator(method="random")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="test_exp",
@@ -445,7 +445,7 @@ class TestCompareGenerators:
         X_train, y_train, X_test, y_test = sample_data
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="test_exp",
@@ -479,7 +479,7 @@ class TestCompareGenerators:
         X_train, y_train, X_test, y_test = sample_data
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="test_exp",
@@ -558,7 +558,7 @@ class TestIntegrationScenarios:
         gen2 = MockBiomarkerGenerator(method="random")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="integration_test",
@@ -616,7 +616,7 @@ class TestIntegrationScenarios:
                 return self.thresholds
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            mlflow_uri = f"file://{tmpdir}/mlruns"
+            mlflow_uri = f"sqlite:///{tmpdir}/mlflow.db"
             evaluator = BiomarkerEvaluator(
                 mlflow_tracking_uri=mlflow_uri,
                 experiment_name="perfect_test",

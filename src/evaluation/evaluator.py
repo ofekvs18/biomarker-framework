@@ -115,7 +115,7 @@ class BiomarkerEvaluator:
 
         Args:
             metrics_config: Configuration for which metrics to compute.
-            mlflow_tracking_uri: URI for MLflow tracking server. If None, uses local mlruns.
+            mlflow_tracking_uri: URI for MLflow tracking server. If None, uses SQLite (mlflow.db).
             experiment_name: Name for the MLflow experiment.
         """
         self.metrics = BiomarkerMetrics()
@@ -127,9 +127,10 @@ class BiomarkerEvaluator:
             "create_plots": True,
         }
 
-        # Initialize MLflow
-        if mlflow_tracking_uri:
-            mlflow.set_tracking_uri(mlflow_tracking_uri)
+        # Initialize MLflow with SQLite by default
+        if mlflow_tracking_uri is None:
+            mlflow_tracking_uri = "sqlite:///mlflow.db"
+        mlflow.set_tracking_uri(mlflow_tracking_uri)
 
         # Set or create experiment
         try:

@@ -9,8 +9,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src.evaluation.metrics import BiomarkerMetrics
-from src.generators.base import BaseBiomarkerGenerator
+from .metrics import BiomarkerMetrics
+
+try:
+    from generators.base import BaseBiomarkerGenerator
+except ImportError:
+    from src.generators.base import BaseBiomarkerGenerator
 
 
 class Evaluator:

@@ -379,7 +379,8 @@ class MIMICDataDownloader:
                           start_date: Optional[str] = None,
                           end_date: Optional[str] = None,
                           lab_names: Optional[List[str]] = None,
-                          chunk_size: int = 5000000):
+                          chunk_size: int = 500000,
+                          max_rows: Optional[int] = None):
         """
         Download lab events (blood tests) - LARGE TABLE
 
@@ -388,6 +389,7 @@ class MIMICDataDownloader:
             end_date: Filter labs before this date (YYYY-MM-DD)
             lab_names: Filter by specific lab test names (e.g., ['Hemoglobin', 'Glucose'])
             chunk_size: Download in chunks to avoid memory issues
+            max_rows: Maximum number of rows to download (for testing)
         """
         # Build filters
         filters = []
@@ -455,7 +457,12 @@ class MIMICDataDownloader:
             """
             count_job = self.client.query(count_query)
             total_rows = list(count_job.result())[0].cnt
-            logger.info(f"  Total rows to download: {total_rows:,}")
+            logger.info(f"  Total rows available: {total_rows:,}")
+
+            # Apply max_rows limit if specified
+            if max_rows and max_rows < total_rows:
+                total_rows = max_rows
+                logger.info(f"  Limiting to {total_rows:,} rows (--max-rows)")
 
             # Calculate number of batches
             num_batches = (total_rows + chunk_size - 1) // chunk_size
@@ -528,7 +535,9 @@ class MIMICDataDownloader:
                     start_date: Optional[str] = None,
                     end_date: Optional[str] = None,
                     lab_names: Optional[List[str]] = None,
-                    icd_version: Optional[int] = None):
+                    icd_version: Optional[int] = None,
+                    max_rows: Optional[int] = None,
+                    chunk_size: int = 500000):
         """
         Download all tables in optimal order
 
@@ -537,6 +546,8 @@ class MIMICDataDownloader:
             end_date: Filter time-based tables before this date
             lab_names: Filter labevents by specific lab test names
             icd_version: Filter diagnoses by ICD version (9 or 10)
+            max_rows: Maximum rows for labevents (for testing)
+            chunk_size: Rows per batch for labevents
         """
         logger.info("="*80)
         logger.info("Starting MIMIC-IV data download from BigQuery")
@@ -565,7 +576,8 @@ class MIMICDataDownloader:
 
         # Download lab events (largest table - do last)
         logger.info("\n[6/7] Downloading lab events (this will take a while)...")
-        self.download_labevents(start_date, end_date, lab_names)
+        self.download_labevents(start_date, end_date, lab_names,
+                                chunk_size=chunk_size, max_rows=max_rows)
 
         # Save metadata
         logger.info("\n[7/7] Saving download metadata...")
@@ -687,6 +699,20 @@ Note: Requires BigQuery access to physionet-data.mimiciv_3_1_hosp
         help='Download specific table only (default: all)'
     )
 
+    parser.add_argument(
+        '--max-rows',
+        type=int,
+        default=None,
+        help='Maximum rows to download for labevents (for testing), e.g., 1000000'
+    )
+
+    parser.add_argument(
+        '--batch-size',
+        type=int,
+        default=500000,
+        help='Rows per batch for labevents download (default: 500000)'
+    )
+
     args = parser.parse_args()
 
     # Parse lab names
@@ -709,7 +735,9 @@ Note: Requires BigQuery access to physionet-data.mimiciv_3_1_hosp
                 start_date=args.start_date,
                 end_date=args.end_date,
                 lab_names=lab_names,
-                icd_version=args.icd_version
+                icd_version=args.icd_version,
+                max_rows=args.max_rows,
+                chunk_size=args.batch_size
             )
         elif args.table == 'patients':
             downloader.download_patients()
@@ -722,7 +750,8 @@ Note: Requires BigQuery access to physionet-data.mimiciv_3_1_hosp
             downloader.download_d_icd_diagnoses()
         elif args.table == 'labevents':
             downloader.download_d_labitems()
-            downloader.download_labevents(args.start_date, args.end_date, lab_names)
+            downloader.download_labevents(args.start_date, args.end_date, lab_names,
+                                          chunk_size=args.batch_size, max_rows=args.max_rows)
 
         return 0
 

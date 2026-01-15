@@ -157,6 +157,12 @@ class CBCPreprocessor:
 
         # Apply lookback window if specified
         if lookback_days is not None and "charttime" in lab_df.columns:
+            # Ensure charttime is datetime type (may be string from some sources)
+            if lab_df.schema["charttime"] == pl.Utf8:
+                lab_df = lab_df.with_columns(
+                    pl.col("charttime").str.to_datetime().alias("charttime")
+                )
+
             # For each patient, find their most recent test
             max_times = lab_df.group_by("subject_id").agg(
                 pl.col("charttime").max().alias("max_charttime")

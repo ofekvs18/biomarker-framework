@@ -146,7 +146,10 @@ def sample_labevents(temp_data_dir):
 @pytest.fixture
 def loader(temp_data_dir, sample_config, sample_admissions, sample_patients, sample_diagnoses, sample_labevents):
     """Create a MIMICLoader instance with sample data."""
-    return MIMICLoader(data_dir=temp_data_dir, config=sample_config)
+    loader = MIMICLoader(data_dir=temp_data_dir, config=sample_config)
+    # Clear any cached data from previous tests to ensure clean state
+    loader.clear_cache()
+    return loader
 
 
 class TestMIMICLoader:
@@ -425,9 +428,9 @@ class TestConfigLoader:
         assert "diseases" in config
         assert "cbc_features" in config
 
-        # Verify some diseases are loaded
-        assert "anemia" in config["diseases"]
-        assert "sepsis" in config["diseases"]
+        # Verify some diseases are loaded (using actual diseases from config)
+        assert "rheumatoid_arthritis" in config["diseases"]
+        assert "diabetes_type2" in config["diseases"]
 
         # Verify some CBC features are loaded
         assert "hemoglobin" in config["cbc_features"]

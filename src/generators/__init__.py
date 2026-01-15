@@ -1,7 +1,7 @@
 """Biomarker generation strategies - interchangeable threshold logic."""
 
 from .base import BaseBiomarkerGenerator, BiomarkerGenerator
-from .datadriven_threshold import DataDrivenThresholdGenerator
+from .datadriven_threshold import DataDrivenThresholdGenerator, YoudensIndexGenerator
 from .literature_threshold import (
     LiteratureThresholdGenerator,
     SingleFeatureLiteratureGenerator,
@@ -13,4 +13,5 @@ __all__ = [
     "LiteratureThresholdGenerator",
     "SingleFeatureLiteratureGenerator",
     "DataDrivenThresholdGenerator",
+    "YoudensIndexGenerator",
 ]

@@ -43,6 +43,7 @@ pip install -e .
 
 # Or install dependencies directly
 pip install -r requirements.txt
+conda install -c conda-forge google-cloud-sdk
 ```
 
 ## Data Setup

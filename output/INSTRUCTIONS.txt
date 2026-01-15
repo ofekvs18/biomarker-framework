@@ -1,0 +1,27 @@
+BigQuery EXPORT DATA Commands for MIMIC-IV
+Target bucket: gs://biomarker-temp-data/
+
+================================================================================
+EXECUTION INSTRUCTIONS:
+================================================================================
+
+1. Create GCS bucket if it doesn't exist:
+   gcloud storage buckets create gs://biomarker-temp-data --location=us
+
+2. Run all export commands in BigQuery console or bq CLI:
+   bq query --use_legacy_sql=false < export_commands.sql
+
+3. Download from GCS to local:
+   gcloud storage cp -r gs://biomarker-temp-data/* ./data/raw/
+
+4. Estimated data sizes after filtering:
+   - labevents (filtered CBC only): ~500MB - 2GB
+   - diagnoses_icd (filtered): ~50MB - 200MB
+   - admissions: ~100MB
+   - patients: ~10MB
+   - d_labitems: <1MB
+   - d_icd_diagnoses: ~10MB
+   - icustays: ~50MB
+
+5. Alternatively, use the provided download script:
+   bash download_from_gcs.sh

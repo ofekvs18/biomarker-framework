@@ -168,3 +168,97 @@ feature_groups:
     - hematocrit
     - wbc
     - platelets
+
+# Literature-based thresholds for biomarker generation
+# These are clinically-relevant thresholds for different diseases
+literature_thresholds:
+  rheumatoid_arthritis:
+    # Anemia is common in RA
+    hemoglobin:
+      low: 12.0  # Anemia threshold (g/dL)
+      high: 17.5
+    # Inflammation markers
+    wbc:
+      low: 4.5
+      high: 11.0  # Elevated in active disease (K/uL)
+    platelets:
+      low: 150
+      high: 400  # Thrombocytosis in inflammation (K/uL)
+    hematocrit:
+      low: 36.0  # Anemia (%)
+      high: 50.0
+    # Additional markers
+    neutrophils:
+      low: 40
+      high: 70  # Can be elevated (%)
+    lymphocytes:
+      low: 20  # Can be decreased (%)
+      high: 40
+
+  diabetes_type1:
+    # Immune-related changes
+    wbc:
+      low: 4.5
+      high: 11.0
+    neutrophils:
+      low: 40
+      high: 70
+    lymphocytes:
+      low: 20
+      high: 40
+    platelets:
+      low: 150
+      high: 400
+
+  diabetes_type2:
+    # Metabolic and inflammatory markers
+    hemoglobin:
+      low: 12.0
+      high: 17.5
+    wbc:
+      low: 4.5
+      high: 11.0  # Elevated in metabolic syndrome
+    platelets:
+      low: 150
+      high: 400  # Increased platelet reactivity
+    hematocrit:
+      low: 36.0
+      high: 50.0
+
+  crohns_disease:
+    # Anemia from chronic inflammation and bleeding
+    hemoglobin:
+      low: 10.0  # Lower threshold for IBD anemia (g/dL)
+      high: 17.5
+    hematocrit:
+      low: 32.0  # Lower threshold for IBD (%)
+      high: 50.0
+    # Inflammation and immune response
+    wbc:
+      low: 4.5
+      high: 11.0  # Elevated in active disease
+    platelets:
+      low: 150
+      high: 450  # Reactive thrombocytosis (K/uL)
+    # Iron deficiency markers
+    mcv:
+      low: 75  # Microcytosis from iron deficiency (fL)
+      high: 100
+    rdw:
+      low: 11.5
+      high: 16.0  # Elevated with anisocytosis (%)
+
+  psoriasis:
+    # Systemic inflammation markers
+    wbc:
+      low: 4.5
+      high: 11.0
+    neutrophils:
+      low: 40
+      high: 70
+    platelets:
+      low: 150
+      high: 400
+    lymphocytes:
+      low: 20
+      high: 40

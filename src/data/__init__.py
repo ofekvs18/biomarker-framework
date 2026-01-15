@@ -3,5 +3,6 @@
 from .loader import DataLoader
 from .preprocessor import Preprocessor
 from .feature_engineer import FeatureEngineer
+from .splitter import DataSplitter
 
-__all__ = ["DataLoader", "Preprocessor", "FeatureEngineer"]
+__all__ = ["DataLoader", "Preprocessor", "FeatureEngineer", "DataSplitter"]

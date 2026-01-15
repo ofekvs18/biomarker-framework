@@ -84,16 +84,16 @@ venv.bak/
 *~
 
 # Data directories - IMPORTANT: Do not commit data files
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
-data/splits/*
-!data/splits/.gitkeep
+data/raw/**/*.parquet
+data/raw/**/*.csv
+data/raw/**/*.csv.gz
+data/processed/**/*.parquet
+data/processed/**/*.csv
+data/processed/**/*.csv.gz
+data/splits/**/*.parquet
+data/splits/**/*.csv
+data/splits/**/*.csv.gz
 mimic_data/
-*.parquet
-*.csv
-*.csv.gz
 
 # Experiments and MLflow outputs
 experiments/

@@ -320,6 +320,74 @@ class TestMIMICLoader:
         with pytest.raises(FileNotFoundError, match="not found"):
             loader.load_patients()
 
+    def test_load_from_directory_structure(self, temp_data_dir, sample_config):
+        """Test loading data from new directory structure (table/*.parquet)."""
+        # Create directory structure
+        admissions_dir = temp_data_dir / "admissions"
+        admissions_dir.mkdir()
+
+        # Create sample data split into multiple files
+        data1 = {
+            "subject_id": [1001, 1002],
+            "hadm_id": [2001, 2002],
+            "admittime": ["2020-01-01 10:00:00", "2020-01-02 11:00:00"],
+            "dischtime": ["2020-01-05 10:00:00", "2020-01-06 11:00:00"],
+            "admission_type": ["EMERGENCY", "ELECTIVE"],
+        }
+        data2 = {
+            "subject_id": [1003, 1004],
+            "hadm_id": [2003, 2004],
+            "admittime": ["2020-01-03 12:00:00", "2020-01-04 13:00:00"],
+            "dischtime": ["2020-01-07 12:00:00", "2020-01-08 13:00:00"],
+            "admission_type": ["URGENT", "EMERGENCY"],
+        }
+
+        # Write to multiple parquet files in directory
+        pl.DataFrame(data1).write_parquet(admissions_dir / "file-001.parquet")
+        pl.DataFrame(data2).write_parquet(admissions_dir / "file-002.parquet")
+
+        # Test loading
+        loader = MIMICLoader(data_dir=temp_data_dir, config=sample_config)
+        df = loader.load_admissions()
+
+        # Should load all data from both files
+        assert isinstance(df, pl.DataFrame)
+        assert len(df) == 4
+        assert set(df["subject_id"].to_list()) == {1001, 1002, 1003, 1004}
+
+    def test_load_lab_results_from_directory(self, temp_data_dir, sample_config):
+        """Test loading lab results from directory structure with filtering."""
+        # Create labevents directory
+        labevents_dir = temp_data_dir / "labevents"
+        labevents_dir.mkdir()
+
+        # Create sample data with both CBC and non-CBC itemids
+        data = {
+            "subject_id": [1001, 1001, 1002, 1002],
+            "hadm_id": [2001, 2001, 2002, 2002],
+            "itemid": [51222, 99999, 51301, 88888],  # 51222 and 51301 are CBC
+            "charttime": [
+                "2020-01-02 08:00:00",
+                "2020-01-02 09:00:00",
+                "2020-01-03 08:00:00",
+                "2020-01-03 09:00:00",
+            ],
+            "valuenum": [13.5, 100.0, 8.2, 200.0],
+            "valueuom": ["g/dL", "unit", "K/uL", "unit"],
+        }
+
+        # Write to parquet file in directory
+        pl.DataFrame(data).write_parquet(labevents_dir / "file-001.parquet")
+
+        # Test loading with CBC filtering
+        loader = MIMICLoader(data_dir=temp_data_dir, config=sample_config)
+        df = loader.load_lab_results()
+
+        # Should only load CBC itemids (51222 and 51301)
+        assert isinstance(df, pl.DataFrame)
+        assert len(df) == 2
+        assert set(df["itemid"].to_list()) == {51222, 51301}
+
 
 class TestDataLoader:
     """Test cases for legacy DataLoader class."""

@@ -90,8 +90,47 @@ class MIMICLoader:
         with open(cache_path, "wb") as f:
             pickle.dump(df, f)
 
+    def _load_parquet_data(self, table_name: str) -> pl.DataFrame:
+        """Load parquet data from either directory or single file.
+
+        Supports both new directory structure (table_name/*.parquet) and
+        legacy single file structure (table_name.parquet).
+
+        Args:
+            table_name: Name of the table (e.g., 'admissions', 'patients').
+
+        Returns:
+            Polars DataFrame with the loaded data.
+
+        Raises:
+            FileNotFoundError: If neither directory nor file exists.
+        """
+        # Try new directory structure first (e.g., admissions/*.parquet)
+        dir_path = self.data_dir / table_name
+        if dir_path.exists() and dir_path.is_dir():
+            # Check if directory has any parquet files
+            parquet_files = list(dir_path.glob("*.parquet"))
+            if parquet_files:
+                # Read all parquet files in directory
+                return pl.read_parquet(dir_path / "*.parquet")
+
+        # Fall back to legacy single file structure (e.g., admissions.parquet)
+        file_path = self.data_dir / f"{table_name}.parquet"
+        if file_path.exists():
+            return pl.read_parquet(file_path)
+
+        # Neither exists - raise error
+        raise FileNotFoundError(
+            f"Data not found for '{table_name}'. "
+            f"Expected either directory '{dir_path}/*.parquet' or file '{file_path}'. "
+            "Please run data download script first."
+        )
+
     def load_admissions(self) -> pl.DataFrame:
-        """Load hospital admissions data from parquet file.
+        """Load hospital admissions data from parquet files.
+
+        Supports both new directory structure (admissions/*.parquet) and
+        legacy single file (admissions.parquet).
 
         Returns:
             Polars DataFrame containing admission records with columns:
@@ -106,19 +145,15 @@ class MIMICLoader:
         if cached is not None:
             return cached
 
-        parquet_path = self.data_dir / "admissions.parquet"
-        if not parquet_path.exists():
-            raise FileNotFoundError(
-                f"Admissions file not found at {parquet_path}. "
-                "Please run data download script first."
-            )
-
-        df = pl.read_parquet(parquet_path)
+        df = self._load_parquet_data("admissions")
         self._save_to_cache("admissions", df)
         return df
 
     def load_diagnoses(self) -> pl.DataFrame:
-        """Load diagnosis codes data from parquet file.
+        """Load diagnosis codes data from parquet files.
+
+        Supports both new directory structure (diagnoses_icd/*.parquet) and
+        legacy single file (diagnoses_icd.parquet).
 
         Returns:
             Polars DataFrame containing diagnosis records with columns:
@@ -132,19 +167,15 @@ class MIMICLoader:
         if cached is not None:
             return cached
 
-        parquet_path = self.data_dir / "diagnoses_icd.parquet"
-        if not parquet_path.exists():
-            raise FileNotFoundError(
-                f"Diagnoses file not found at {parquet_path}. "
-                "Please run data download script first."
-            )
-
-        df = pl.read_parquet(parquet_path)
+        df = self._load_parquet_data("diagnoses_icd")
         self._save_to_cache("diagnoses", df)
         return df
 
     def load_patients(self) -> pl.DataFrame:
-        """Load patient demographics data from parquet file.
+        """Load patient demographics data from parquet files.
+
+        Supports both new directory structure (patients/*.parquet) and
+        legacy single file (patients.parquet).
 
         Returns:
             Polars DataFrame containing patient records with columns:
@@ -158,22 +189,16 @@ class MIMICLoader:
         if cached is not None:
             return cached
 
-        parquet_path = self.data_dir / "patients.parquet"
-        if not parquet_path.exists():
-            raise FileNotFoundError(
-                f"Patients file not found at {parquet_path}. "
-                "Please run data download script first."
-            )
-
-        df = pl.read_parquet(parquet_path)
+        df = self._load_parquet_data("patients")
         self._save_to_cache("patients", df)
         return df
 
     def load_lab_results(self) -> pl.DataFrame:
-        """Load CBC laboratory test results from parquet file.
+        """Load CBC laboratory test results from parquet files.
 
         Filters the labevents data to include only CBC-related tests based on
-        itemids defined in the configuration.
+        itemids defined in the configuration. Supports both new directory
+        structure (labevents/*.parquet) and legacy single file (labevents.parquet).
 
         Returns:
             Polars DataFrame containing CBC lab results with columns:
@@ -190,17 +215,30 @@ class MIMICLoader:
         if cached is not None:
             return cached
 
-        parquet_path = self.data_dir / "labevents.parquet"
-        if not parquet_path.exists():
+        # Try new directory structure first
+        dir_path = self.data_dir / "labevents"
+        file_path = self.data_dir / "labevents.parquet"
+
+        # Determine which path to use
+        parquet_pattern = None
+        if dir_path.exists() and dir_path.is_dir():
+            parquet_files = list(dir_path.glob("*.parquet"))
+            if parquet_files:
+                parquet_pattern = str(dir_path / "*.parquet")
+        elif file_path.exists():
+            parquet_pattern = str(file_path)
+
+        if parquet_pattern is None:
             raise FileNotFoundError(
-                f"Lab events file not found at {parquet_path}. "
+                f"Lab events data not found. "
+                f"Expected either directory '{dir_path}/*.parquet' or file '{file_path}'. "
                 "Please run data download script first."
             )
 
-        # Load full labevents and filter for CBC itemids
+        # Load labevents and filter for CBC itemids
         # Use lazy evaluation for efficiency with large files
         df = (
-            pl.scan_parquet(parquet_path)
+            pl.scan_parquet(parquet_pattern)
             .filter(pl.col("itemid").is_in(self._cbc_itemids))
             .collect()
         )
@@ -312,6 +350,7 @@ class DataLoader:
     """Load and manage MIMIC-IV data files (legacy interface).
 
     This class is kept for backward compatibility. New code should use MIMICLoader.
+    Supports both new directory structure and legacy single file structure.
     """
 
     def __init__(self, data_dir: Union[str, Path] = "data/raw/mimic_data"):
@@ -322,33 +361,44 @@ class DataLoader:
         """
         self.data_dir = Path(data_dir)
 
+    def _load_parquet(self, table_name: str) -> pl.DataFrame:
+        """Load parquet data from either directory or single file.
+
+        Args:
+            table_name: Name of the table.
+
+        Returns:
+            Polars DataFrame with the loaded data.
+        """
+        # Try directory structure first
+        dir_path = self.data_dir / table_name
+        if dir_path.exists() and dir_path.is_dir():
+            parquet_files = list(dir_path.glob("*.parquet"))
+            if parquet_files:
+                return pl.read_parquet(dir_path / "*.parquet")
+
+        # Fall back to single file
+        file_path = self.data_dir / f"{table_name}.parquet"
+        if file_path.exists():
+            return pl.read_parquet(file_path)
+
+        raise FileNotFoundError(f"Data not found for '{table_name}'")
+
     def load_labevents(self) -> pl.DataFrame:
         """Load laboratory events data."""
-        parquet_path = self.data_dir / "labevents.parquet"
-        if not parquet_path.exists():
-            raise FileNotFoundError(f"Lab events file not found at {parquet_path}")
-        return pl.read_parquet(parquet_path)
+        return self._load_parquet("labevents")
 
     def load_patients(self) -> pl.DataFrame:
         """Load patient demographics data."""
-        parquet_path = self.data_dir / "patients.parquet"
-        if not parquet_path.exists():
-            raise FileNotFoundError(f"Patients file not found at {parquet_path}")
-        return pl.read_parquet(parquet_path)
+        return self._load_parquet("patients")
 
     def load_admissions(self) -> pl.DataFrame:
         """Load hospital admissions data."""
-        parquet_path = self.data_dir / "admissions.parquet"
-        if not parquet_path.exists():
-            raise FileNotFoundError(f"Admissions file not found at {parquet_path}")
-        return pl.read_parquet(parquet_path)
+        return self._load_parquet("admissions")
 
     def load_diagnoses(self) -> pl.DataFrame:
         """Load diagnosis codes data."""
-        parquet_path = self.data_dir / "diagnoses_icd.parquet"
-        if not parquet_path.exists():
-            raise FileNotFoundError(f"Diagnoses file not found at {parquet_path}")
-        return pl.read_parquet(parquet_path)
+        return self._load_parquet("diagnoses_icd")
 
 
 def load_config(config_dir: Union[str, Path] = "configs") -> dict:

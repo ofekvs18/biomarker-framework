@@ -22,17 +22,17 @@ def sample_config():
     """Create sample configuration for testing."""
     return {
         "diseases": {
-            "anemia": {
-                "name": "Anemia",
-                "icd9_codes": ["280", "281", "285"],
-                "icd10_codes": ["D50", "D51"],
-                "relevant_biomarkers": ["hemoglobin", "hematocrit"],
+            "rheumatoid_arthritis": {
+                "name": "Rheumatoid Arthritis",
+                "icd9_codes": ["714.0", "714.1", "714.2"],
+                "icd10_codes": ["M05", "M06"],
+                "relevant_biomarkers": ["wbc", "platelets", "hemoglobin"],
             },
-            "sepsis": {
-                "name": "Sepsis",
-                "icd9_codes": ["038", "995.91"],
-                "icd10_codes": ["A40", "A41"],
-                "relevant_biomarkers": ["wbc", "platelets"],
+            "crohns_disease": {
+                "name": "Crohn's Disease",
+                "icd9_codes": ["555.0", "555.1", "555.2"],
+                "icd10_codes": ["K50"],
+                "relevant_biomarkers": ["wbc", "platelets", "hemoglobin"],
             },
             "diabetes_type2": {
                 "name": "Diabetes Type 2",
@@ -108,7 +108,7 @@ def sample_diagnoses(temp_data_dir):
     data = {
         "subject_id": [1001, 1001, 1002, 1003, 1003, 1004],
         "hadm_id": [2001, 2001, 2002, 2003, 2003, 2004],
-        "icd_code": ["280.0", "038.9", "250.00", "D50.9", "E11.9", "A40.1"],
+        "icd_code": ["714.0", "555.0", "250.00", "M05", "E11.9", "K50"],
         "icd_version": [9, 9, 9, 10, 10, 10],
         "seq_num": [1, 2, 1, 1, 2, 1],
     }
@@ -220,23 +220,23 @@ class TestMIMICLoader:
         for itemid in itemids:
             assert itemid in loader._cbc_itemids
 
-    def test_get_patients_with_disease_anemia(self, loader):
-        """Test identifying patients with anemia."""
-        patient_ids = loader.get_patients_with_disease("anemia")
+    def test_get_patients_with_disease_rheumatoid_arthritis(self, loader):
+        """Test identifying patients with rheumatoid arthritis."""
+        patient_ids = loader.get_patients_with_disease("rheumatoid_arthritis")
 
-        # Patients 1001 (280.0) and 1003 (D50.9) have anemia
+        # Patients 1001 (714.0) and 1003 (M05) have rheumatoid arthritis
         assert isinstance(patient_ids, list)
-        assert 1001 in patient_ids  # ICD-9: 280.0
-        assert 1003 in patient_ids  # ICD-10: D50.9
+        assert 1001 in patient_ids  # ICD-9: 714.0
+        assert 1003 in patient_ids  # ICD-10: M05
         assert len(patient_ids) == 2
 
-    def test_get_patients_with_disease_sepsis(self, loader):
-        """Test identifying patients with sepsis."""
-        patient_ids = loader.get_patients_with_disease("sepsis")
+    def test_get_patients_with_disease_crohns_disease(self, loader):
+        """Test identifying patients with Crohn's disease."""
+        patient_ids = loader.get_patients_with_disease("crohns_disease")
 
-        # Patients 1001 (038.9) and 1004 (A40.1) have sepsis
-        assert 1001 in patient_ids  # ICD-9: 038.9
-        assert 1004 in patient_ids  # ICD-10: A40.1
+        # Patients 1001 (555.0) and 1004 (K50) have Crohn's disease
+        assert 1001 in patient_ids  # ICD-9: 555.0
+        assert 1004 in patient_ids  # ICD-10: K50
         assert len(patient_ids) == 2
 
     def test_get_patients_with_disease_diabetes(self, loader):
@@ -428,9 +428,10 @@ class TestConfigLoader:
         assert "diseases" in config
         assert "cbc_features" in config
 
-        # Verify some diseases are loaded (using actual diseases from config)
+        # Verify some diseases are loaded
         assert "rheumatoid_arthritis" in config["diseases"]
         assert "diabetes_type2" in config["diseases"]
+        assert "crohns_disease" in config["diseases"]
 
         # Verify some CBC features are loaded
         assert "hemoglobin" in config["cbc_features"]

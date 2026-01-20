@@ -1,0 +1,44 @@
+name: biomarkers-discovery-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Core
+  - python=3.10
+  - numpy>=1.24
+  - pandas>=2.0
+  - scikit-learn>=1.3
+
+  # Data I/O
+  - pyarrow>=14.0
+  - gcsfs
+  - pyyaml
+
+  # Google Cloud
+  - google-cloud-bigquery>=3.0
+  - google-auth>=2.0
+  - db-dtypes>=1.0
+
+  # Configuration
+  - hydra-core
+
+  # ML Models
+  - xgboost>=2.0
+  - lightgbm>=4.0
+  - shap>=0.42
+  - joblib
+
+  # Visualization
+  - matplotlib>=3.7
+  - seaborn>=0.12
+
+  # Experiment tracking
+  - mlflow>=2.0
+
+  # Jupyter
+  - jupyter
+  - ipykernel
+
+  # Dev tools
+  - pytest>=7.0
+  - tqdm>=4.65

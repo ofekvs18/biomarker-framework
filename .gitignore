@@ -1,104 +1,36 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
 *.egg
+dist/
+build/
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# Environment
+# Environments
 .env
-.venv
-env/
+.venv/
 venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
 
 # IDE
 .idea/
 .vscode/
 *.swp
-*.swo
-*~
 
-# Data directories - IMPORTANT: Do not commit data files
-data/raw/**/*.parquet
-data/raw/**/*.csv
-data/raw/**/*.csv.gz
-data/processed/**/*.parquet
-data/processed/**/*.csv
-data/processed/**/*.csv.gz
-data/splits/**/*.parquet
-data/splits/**/*.csv
-data/splits/**/*.csv.gz
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data files
+*.parquet
+*.csv
+*.csv.gz
+data/
 mimic_data/
-
-# Experiments and MLflow outputs
-experiments/
-mlruns/
-mlflow.db
 
 # Model artifacts
 *.pkl
@@ -107,27 +39,21 @@ mlflow.db
 *.pt
 *.pth
 
-# Logs
+# Logs & outputs
 *.log
 logs/
+outputs/
+mlruns/
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Credentials and secrets
+# Credentials
 *.pem
 *.key
-credentials.json
-service_account.json
-.gcloud/
+*.json
+!conf/**/*.json
 
-# Temporary files
-*.tmp
-*.temp
-.temp/
+# OS
+.DS_Store
+Thumbs.db
+
+# Hydra
+outputs/

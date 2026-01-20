@@ -1,0 +1,15 @@
+defaults:
+  - cohort: type1_diabetes
+  - features: cbc
+  - _self_
+
+storage:
+  bucket: "biomarker-temp-data"        # <--- CONFIRM THIS IS YOUR BUCKET NAME
+  raw_path: "raw_data/"       # Folder inside bucket where data lives
+  output_path: "experiments"
+  key_path: "auth_key.json"   # Relative path to your JSON file
+
+# Standard Hydra setup for logging
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}

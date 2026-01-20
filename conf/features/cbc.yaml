@@ -1,0 +1,17 @@
+# Complete Blood Count (CBC) IDs in MIMIC-IV
+lab_ids:
+  - 51221 # Hematocrit
+  - 51222 # Hemoglobin
+  - 51301 # White Blood Cells (WBC)
+  - 51265 # Platelet Count
+  - 51279 # Red Blood Cells (RBC)
+  - 51250 # MCV (Mean Corpuscular Volume)
+  - 51248 # MCH (Mean Corpuscular Hemoglobin)
+  - 51249 # MCHC
+  - 51277 # RDW (Red Cell Distribution Width)
+  # You can add Neutrophils/Lymphocytes if you want the differential too
+  - 51256 # Neutrophils
+  - 51244 # Lymphocytes
+
+aggregation: "mean"
+name: "cbc" 

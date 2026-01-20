@@ -5,6 +5,3 @@ icd_codes:
   - "25003" # ICD-9: Diabetes with coma, type 1
   - "E10"   # ICD-10: Type 1 diabetes mellitus
   # Add more codes as needed
-
-# Censoring Logic
-gap_days: 30  # "X days before diagnosis"

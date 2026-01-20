@@ -13,5 +13,11 @@ lab_ids:
   - 51256 # Neutrophils
   - 51244 # Lymphocytes
 
-aggregation: "mean"
-name: "cbc" 
+aggregation: 
+  - "mean"
+  - "max"
+  - "min"
+  - "std"
+  - "count"
+
+name: "cbc_expanded"

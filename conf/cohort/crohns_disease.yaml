@@ -1,0 +1,7 @@
+disease_name: "Crohns Disease"
+icd_codes:
+  - "5550"
+  - "5551"
+  - "5552"
+  - "5559"
+  - "K50"

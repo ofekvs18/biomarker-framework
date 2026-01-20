@@ -15,7 +15,7 @@ def main(cfg: DictConfig):
     # We need to load the SPECIFIC cohort file we generated earlier
     # Logic: "cohort_Type1Diabetes_30d.parquet"
     safe_disease_name = cfg.cohort.disease_name.replace(" ", "")
-    cohort_filename = f"cohort_{safe_disease_name}_{cfg.cohort.gap_days}d.parquet"
+    cohort_filename = f"cohort_{safe_disease_name}_{cfg.gap_days}d.parquet"
     cohort_path = f"gs://{cfg.storage.bucket}/{cfg.storage.output_path}/{cohort_filename}"
     
     print(f"Loading Cohort Rules from: {cohort_path}")
@@ -67,31 +67,36 @@ def main(cfg: DictConfig):
     
     print(f"Dropped {rows_before - rows_after} rows that occurred after the diagnosis/cutoff.")
 
-    # 6. Pivot / Aggregate (Feature Engineering)
-    # Convert from Long format (many rows per patient) to Wide format (one row per patient)
-    print(f"Aggregating features using method: {cfg.features.aggregation}...")
+    # 6. Pivot / Aggregate (Expanded)
+    print(f"Aggregating features using: {cfg.features.aggregation}...")
     
-    # Group by Patient + Lab Item -> Apply Mean/Max/Min
-    grouped = valid_data.groupby(['subject_id', 'itemid'])['valuenum'].agg(cfg.features.aggregation)
+    # Convert OmegaConf list to standard python list if needed
+    agg_funcs = list(cfg.features.aggregation)
     
-    # Unstack: Moves 'itemid' from index to columns
-    # fill_value=0 means if a patient didn't have a test, they get 0 (or use NaN)
+    # Group by Patient + ItemID -> Calculate ALL statistics at once
+    # Result is a DataFrame with columns: ['mean', 'max', 'min', 'std', 'count']
+    grouped = valid_data.groupby(['subject_id', 'itemid'])['valuenum'].agg(agg_funcs)
+    
+    # Unstack moves 'itemid' to columns, creating a MultiIndex
+    # Structure: (Aggregation, ItemID) -> ('mean', 51221), ('max', 51221)...
     X_features = grouped.unstack(fill_value=0)
     
-    # Rename columns to be readable (e.g. "lab_51221")
-    X_features.columns = [f"lab_{col}" for col in X_features.columns]
+    # FLATTEN THE COLUMNS
+    # We want names like: "lab_51221_mean", "lab_51221_max"
+    new_columns = []
+    for agg_name, item_id in X_features.columns:
+        new_columns.append(f"lab_{item_id}_{agg_name}")
+        
+    X_features.columns = new_columns
     
-    # 7. Final Assembly
-    # Join features back to the main cohort to ensure we have the Labels (0/1)
-    # and to include patients who might have had NO lab data (they will have NaN/0 features)
+    print(f"Generated {len(X_features.columns)} features (was {len(cfg.features.lab_ids)} labs * {len(agg_funcs)} metrics).")
+
+    # 7. Final Assembly (Same as before)
     final_dataset = cohort[['subject_id', 'label']].merge(X_features, on='subject_id', how='left')
-    
-    # Fill NaN for patients who had zero matching labs (optional, depends on model)
-    final_dataset = final_dataset.fillna(0)
     
     # 8. Save Final Dataset
     # Naming: "dataset_Type1Diabetes_30d_cbc.parquet"
-    output_filename = f"dataset_{safe_disease_name}_{cfg.cohort.gap_days}d_{cfg.features.name}.parquet"
+    output_filename = f"dataset_{safe_disease_name}_{cfg.gap_days}d_{cfg.features.name}.parquet"
     save_path = f"gs://{cfg.storage.bucket}/{cfg.storage.output_path}/{output_filename}"
     
     print(f"Saving Final Dataset ({final_dataset.shape}) to {save_path}...")

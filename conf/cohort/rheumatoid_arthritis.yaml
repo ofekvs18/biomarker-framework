@@ -1,0 +1,13 @@
+disease_name: "Rheumatoid Arthritis"
+# Combined ICD-9 (714.x) and ICD-10 (M05, M06)
+# Dots removed to match MIMIC format
+icd_codes:
+  - "7140"
+  - "7141"
+  - "7142"
+  - "7143"
+  - "7144"
+  - "7148"
+  - "7149"
+  - "M05"
+  - "M06"

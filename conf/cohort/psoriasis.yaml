@@ -1,0 +1,4 @@
+disease_name: "Psoriasis"
+icd_codes:
+  - "6961"
+  - "L40"

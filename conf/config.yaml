@@ -3,6 +3,12 @@ defaults:
   - features: cbc
   - _self_
 
+study_params:
+  # The list of gap days you want to generate cohorts for
+  gap_windows: [30, 90, 180, 365]
+
+gap_days: 30  # Default gap days, can be overridden by study_params
+
 storage:
   bucket: "biomarker-temp-data"        # <--- CONFIRM THIS IS YOUR BUCKET NAME
   raw_path: "raw_data/"       # Folder inside bucket where data lives
